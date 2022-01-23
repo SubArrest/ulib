@@ -110,7 +110,7 @@ local function tsayColorCallback( ply, ... )
 					net.WriteString( arg )
 				else
 					net.WriteBool( false )
-					net.WriteColor( arg )
+					net.WriteColor( Color( arg.r, arg.g, arg.b, arg.a ) )
 				end
 			end
 		
