@@ -17,6 +17,7 @@ ULib.BanMessage = [[
 function ULib.getBanMessage( steamid, banData, templateMessage )
 	banData = banData or ULib.bans[ steamid ]
 	if not banData then return end
+  print( templateMessage )
 	templateMessage = templateMessage or ULib.BanMessage
 
 	local replacements = {
@@ -24,7 +25,7 @@ function ULib.getBanMessage( steamid, banData, templateMessage )
 		BAN_START = "(Unknown)",
 		REASON = "(None given)",
 		TIME_LEFT = "(Permaban)",
-		STEAMID = steamid:gsub("%D", ""),
+		STEAMID = steamid,
 		STEAMID64 = util.SteamIDTo64( steamid ),
 	}
 
@@ -45,8 +46,9 @@ function ULib.getBanMessage( steamid, banData, templateMessage )
 	if unban and unban > 0 then
 		replacements.TIME_LEFT = ULib.secondsToStringTime( unban - os.time() )
 	end
-
-	return templateMessage:gsub( "{{([%w_]+)}}", replacements )
+  
+  	local banMessage = templateMessage:gsub( "{{([%w_]+)}}", replacements )
+	return banMessage
 end
 
 local function checkBan( steamid64, ip, password, clpassword, name )
@@ -148,9 +150,12 @@ function ULib.addBan( steamid, time, reason, name, admin )
 
 	local admin_name
 	if admin then
-		admin_name = "(Console)"
-		if admin:IsValid() then
-			admin_name = string.format( "%s(%s)", admin:Name(), admin:SteamID() )
+		if isstring(admin) then
+			admin_name = admin
+		elseif not IsValid(admin) then
+			admin_name = "(Console)"
+		elseif admin:IsPlayer() then
+			admin_name = string.format("%s(%s)", admin:Name(), admin:SteamID())
 		end
 	end
 
@@ -192,11 +197,8 @@ function ULib.addBan( steamid, time, reason, name, admin )
 		ULib.kick( ply, longReason, nil, true)
 	end
 
-	-- Remove all semicolons from the reason to prevent command injection
-	shortReason = string.gsub(shortReason, ";", "")
-
 	-- This redundant kick is to ensure they're kicked -- even if they're joining
-	game.ConsoleCommand( string.format( "kickid %s %s\n", steamid, shortReason or "" ) )
+	RunConsoleCommand("kickid", steamid, shortReason or "")
 
 	writeBan( t )
 	hook.Call( ULib.HOOK_USER_BANNED, _, steamid, t )
@@ -218,7 +220,8 @@ end
 		v2.10 - Initial
 ]]
 function ULib.unban( steamid, admin )
-	game.ConsoleCommand( "removeid " .. steamid .. ";writeid\n" ) -- Remove from srcds in case it was stored there
+	RunConsoleCommand("removeid", steamid) -- Remove from srcds in case it was stored there
+	RunConsoleCommand("writeid") -- Saving
 
 	--ULib banlist
 	ULib.bans[ steamid ] = nil
